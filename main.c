@@ -25,8 +25,9 @@ typedef struct {
 	Card_node* head;	
 } Deck;
 
-
 void card_prompt(Card card);
+
+size_t card_ll_length(Card_node* head);
 
 void free_card_node(Card_node* node);
 
@@ -59,8 +60,13 @@ int main(void) {
 	Card_node* cnode = malloc(sizeof(Card_node));
 	cnode->data = card0;
 
-	print_card_node(cnode);
-	free_card_node(cnode);
+	Deck* d = malloc(sizeof(Deck));
+	strcpy(d->name, "Test");
+	d->deck_size = card_ll_length(cnode);
+	d->head = cnode;
+
+	print_card_node(d->head);
+	free_deck(d);
 
 	return 0;
 }
@@ -72,6 +78,17 @@ void card_prompt(Card card) {
 	while( getchar() != '\n' );
 	printf("%s\n", card.back);
 	return;
+}
+
+
+size_t card_ll_length(Card_node* head) {
+	size_t l = 0;
+	Card_node* tmp = head;
+	while (tmp) {
+		l++;
+		tmp = tmp->next;
+	}
+	return l;
 }
 
 
