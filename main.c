@@ -29,7 +29,7 @@ void card_prompt(Card card);
 
 size_t card_ll_length(Card_node* head);
 
-void free_card_node(Card_node* node);
+void free_card_node(Card_node* head);
 
 void free_deck(Deck* deck);
 
@@ -39,34 +39,18 @@ Deck* load_deck(FILE* f);
 
 int main(void) {
 	// load from text file
-	//FILE* fp = fopen("deck0.txt", "r");
-	//if (fp == NULL) {
-	//	printf("The file was not opened. The program will "
-	//			"now exit.\n");
-	//	exit(0);
-	//}
-	//Deck* current_deck = load_deck(fp);
-	//fclose(fp);
-	//printf("Loaded deck.\n");
+	FILE* fp = fopen("deck1.txt", "r");
+	if (fp == NULL) {
+		printf("The file was not opened. The program will "
+				"now exit.\n");
+		exit(0);
+	}
+	Deck* current_deck = load_deck(fp);
+	fclose(fp);
+	printf("Loaded deck.\n");
 
 
-	//free_deck(current_deck);
-
-	// test card node
-	Card* card0 = malloc(sizeof(Card));
-	strcpy(card0->front, "Algeria");
-	strcpy(card0->back, "Algiers");
-
-	Card_node* cnode = malloc(sizeof(Card_node));
-	cnode->data = card0;
-
-	Deck* d = malloc(sizeof(Deck));
-	strcpy(d->name, "Test");
-	d->deck_size = card_ll_length(cnode);
-	d->head = cnode;
-
-	print_card_node(d->head);
-	free_deck(d);
+	free_deck(current_deck);
 
 	return 0;
 }
@@ -92,7 +76,8 @@ size_t card_ll_length(Card_node* head) {
 }
 
 
-void free_card_node(Card_node* node) {
+void free_card_node(Card_node* head) {
+	Card_node* node = head;
 	Card_node* tmp;
 	while(node) {
 		tmp = node;
@@ -125,35 +110,38 @@ void print_card_node(Card_node* node) {
 
 
 Deck* load_deck(FILE* f) {
+	// get deck name
 	char deck_name[32];
 	if (fgets(deck_name, sizeof(deck_name), f) == NULL) return NULL;
 	Deck* d = malloc(sizeof(Deck));
 	strcpy(d->name, deck_name);
+	printf("deck name: %s\n",d->name); // testing
 	d->deck_size = 0;
 	d->head = NULL;
 	
+	// get front of first card
 	char buff[FRONT_MAX];
-	if (fgets(buff, sizeof(buff), f) == NULL) return d;
-
+	// if (fgets(buff, sizeof(buff), f) == NULL) return d;
+	// make a new card linked list
 	Card_node* head = malloc(sizeof(Card_node));
-	Card* new_card = malloc(sizeof(Card));
-	strcpy(new_card->front, buff);
-	head->data = new_card;
 	head->next = NULL;
 
+	Card* new_card;
 	Card_node* node = head;
 	size_t size = 0;
-	int front = 0;
+	int front = 1;
 	while (fgets(buff, sizeof(buff), f) != NULL) {
 		if (front) {
 			new_card = malloc(sizeof(Card));
 			strcpy(new_card->front, buff);
+			printf("Read card front: %s\n", (new_card->front));
 			front = 0;
 		} else {
 			strcpy(new_card->back, buff);
+			printf("Read card back: %s\n", (new_card->back));
+			node->data = new_card;
 			node->next = malloc(sizeof(Card_node));
 			node = node->next;
-			node->data = new_card;
 			node->next = NULL;
 			size++;
 			front = 1;
