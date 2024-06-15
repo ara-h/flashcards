@@ -126,7 +126,7 @@ Deck* load_deck(FILE* f) {
 	Card_node* head = malloc(sizeof(Card_node));
 	head->next = NULL;
 
-	Card* new_card;
+	Card* new_card = NULL;
 	Card_node* node = head;
 	size_t size = 0;
 	int front = 1;
@@ -147,8 +147,22 @@ Deck* load_deck(FILE* f) {
 			front = 1;
 		}
 	}
-
-	// TODO: handle when deck doesn't end in a card added to deck
+	
+	// handle when deck doesn't end in a card added to deck
+	if (front == 0) {
+		if (new_card == NULL) {
+			// no cards were read from file
+			head = NULL;
+		} else {
+			// front was read but no back
+			// insert message as back of card
+			char blank_msg[] = "flashcards: the back of this card wasn't found";
+			strcpy(new_card->back, blank_msg);
+			node->data = new_card;
+			size++;
+		}
+	} 
+	
 	d->deck_size = size;
 	d->head = head;
 	return d;
