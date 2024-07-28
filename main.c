@@ -26,6 +26,8 @@ typedef struct {
 
 void card_prompt(Card card);
 
+void deck_prompt(Deck* deck);
+
 size_t card_ll_length(Card_node* head);
 
 void free_card_node(Card_node* head);
@@ -50,7 +52,7 @@ int main(void) {
 	fclose(fp);
 	printf("Loaded deck.\n");
 
-	print_card_node(current_deck->head);
+  deck_prompt(current_deck);
 
 	free_deck(current_deck);
 
@@ -64,6 +66,16 @@ void card_prompt(Card card) {
 	while( getchar() != '\n' );
 	printf("%s\n", card.back);
 	return;
+}
+
+
+void deck_prompt(Deck* deck) {
+  Card_node* node = deck->head;
+  while (node) {
+    card_prompt(*(node->data));
+    node = node->next;
+  }
+  return;
 }
 
 
