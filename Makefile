@@ -1,4 +1,3 @@
-#UNAME=:$(shell uname)
-
+CC=clang
 main.o: main.c
-	gcc -o main.o main.c -lncurses -lmenu -lpanel -Wall
+	$(CC) -o main.o main.c -lncurses -lmenu -lpanel -Wall
