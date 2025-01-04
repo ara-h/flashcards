@@ -1,8 +1,7 @@
-#include <curses.h>
-#include <menu.h>
-#include <ncurses.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <curses.h>
+#include <menu.h>
 
 void print_window_title(WINDOW *win, int starty, int startx, int width,
                         char *str, int str_len);
@@ -51,8 +50,9 @@ int main(int argc, char *argv[]) {
 
   ITEM *cur;
   void (*p)(char *, WINDOW *);
+  int exitp = 0;
   int c;
-  while ((c = wgetch(main_menu_win)) != 'q') {
+  while ((c = wgetch(main_menu_win)) != 'q' || exitp) {
     switch (c) {
     case 'j':
     case KEY_DOWN:
@@ -71,8 +71,6 @@ int main(int argc, char *argv[]) {
       // Do something on pressing Enter
     }
 
-    // but if wgetch returns the window resize char, then move the window to new
-    // center
     wrefresh(main_menu_win);
   }
 
@@ -138,6 +136,8 @@ WINDOW *make_main_menu_win(MENU *mm, WINDOW *win) {
 
 void placeholder_func(char *name, WINDOW *win) {
   wmove(win, 8, 1);
-  clrtoeol(); // This doesn't really clear to end of line
+  wclrtoeol(win); // This doesn't really clear to end of line
   mvwprintw(win, 8, 1, "Item selected is : %s", name);
+  wmove(win, 8, 47);
+  waddch(win, ACS_VLINE);
 }
