@@ -1,4 +1,3 @@
-#include <_regex.h>
 #include <stdio.h>
 #include <string.h>
 #include <regex.h>
@@ -45,6 +44,7 @@ int main(int argc, char** argv) {
         fclose(config);
         return 1;
     }
+
     // Parse configuration file.
     char buf[256];
     regex_t regex;
@@ -78,12 +78,16 @@ int main(int argc, char** argv) {
         int final = regmatch[1].rm_eo;
         int initial = regmatch[1].rm_so;
         strncpy(search_path, buf + initial, final - initial);
-        printf("Read this from the config file: %s\n", search_path);
-    } else if (reti == REG_NOMATCH) {
-        printf("No match was found in the file.\n");
     } else {
-        regerror(reti, &regex, buf, sizeof(buf));
-        fprintf(stderr, "Regex match failed: %s\n", buf);
+        if (reti == REG_NOMATCH) {
+            fprintf(stderr, "No match was found in the file.\n");
+        } else {
+            regerror(reti, &regex, buf, sizeof(buf));
+            fprintf(stderr, "Regex match failed: %s\n", buf);
+        }
+        fclose(config);
+        regfree(&regex);
+        return 1;
     }
 
     fclose(config);
