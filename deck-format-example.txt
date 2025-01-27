@@ -1,0 +1,8 @@
+This file shows the format of the deck file expected by the program. The first line contains the deck's name. You can make each line as long as you want. The deck name will be truncated in the deck-chooser submenu.
+Subsequent lines contain the prompts, on even line numbers, or the answers, on odd line numbers. This is the front of, or prompt for, the first card. It will be truncated to what will fit in the terminal window when the program is in the study mode.
+This is the back of, or answer for, the first card.
+This is the front of the third card.
+This is the back of the third card.
+
+The fourth card's front will be blank. This is the back of the fourth card.
+A card whose front is unaccompanied by a corresponding back on the next line will not be loaded into the deck.
