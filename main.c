@@ -98,8 +98,9 @@ int main(int argc, char** argv) {
     }
 
     // Get search paths.
-    //      Paths included are expected to be separated by ';'.
+    //      Paths included are expected to be separated by ':'.
     // Do the showing of the search paths and the exiting, if desired.
+    // Do the adding of search paths and the exiting, if desired.
     // Enter deck chooser.
     // Display a scrolling ncurses menu, where the items are the truncated
     //      deck names. Each item has a pointer to a function that starts study
@@ -113,7 +114,7 @@ void show_help(char *ex_name) {
     printf(
         "Usage: %s [option...] [-a path]\n"
                 "Options:\n"
-                "   -a path     add path(s) to the search paths, ;-separated\n"
+                "   -a path     add path(s) to the search paths, :-separated\n"
                 "   -h          show this help text\n"
                 "   -p          show search paths\n"
                 "   -V          show version\n",
