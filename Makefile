@@ -2,8 +2,6 @@ CC=clang
 main.o: main.c
 	$(CC) -o main.o main.c
 
-study.o: study.c
-	$(CC) -o study.o study.c -lncurses -Wall
 
-choose_deck.o: choose_deck.c
-	$(CC) -o choose_deck.o choose_deck.c -lncurses -lmenu -Wall
+choose_deck.o: choose_deck.c study.c
+	$(CC) -o choose_deck.o choose_deck.c study.c -lncurses -lmenu -Wall

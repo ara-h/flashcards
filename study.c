@@ -1,178 +1,147 @@
 #include <sys/queue.h>
-// #include <stdio.h>
-#include <curses.h>
-#include <stdlib.h>
-#include <string.h>
+#include "study.h"
 
-#define CARD_MAX_CHAR 512
-
-enum study_state { SHOW_FRONT, SHOW_BACK, DECK_END };
-
-struct card {
-  char front[CARD_MAX_CHAR];
-  char back[CARD_MAX_CHAR];
-  CIRCLEQ_ENTRY(card) cards;
-};
-
-CIRCLEQ_HEAD(deck_head, card);
-
-int wind_down(struct deck_head *head_ptr) {
-  struct card *tmp1, *tmp2;
-  tmp1 = CIRCLEQ_FIRST(head_ptr);
-  while (tmp1 != (void *)head_ptr) {
-    tmp2 = CIRCLEQ_NEXT(tmp1, cards);
-    free(tmp1);
-    tmp1 = tmp2;
-  }
-  CIRCLEQ_INIT(head_ptr);
-
-  return 0;
+void wind_down_study(struct deck_head *head_ptr) {
+    struct card *tmp1, *tmp2;
+    tmp1 = CIRCLEQ_FIRST(head_ptr);
+    while (tmp1 != (void *)head_ptr) {
+        tmp2 = CIRCLEQ_NEXT(tmp1, cards);
+        free(tmp1);
+        tmp1 = tmp2;
+    }
+    CIRCLEQ_INIT(head_ptr);
+    return;
 }
 
 // struct deck_head* load_deck(FILE* deck_fp);
 
-// The main function will do the following.
-// Load search paths.
-// Search for decks. Load them into something.
-// Show menu to select deck to study. Associate base names of decks with
-// menu items.
-// Enter into study mode.
-// In study mode, shuffle the cards and insert them in a queue.
-// Show the cards from the queue. User will press enter or space key to show
-// the answer, then press 1 to put it at the end of the queue or 2 to
-// discard it.
+int study(char *deck_fn) {
+    struct card *c1, *c2, *c3;
+    struct deck_head head;
 
-int main(void) {
-  struct card *c1, *c2, *c3;
-  struct deck_head head;
+    CIRCLEQ_INIT(&head);
 
-  CIRCLEQ_INIT(&head);
+    c1 = malloc(sizeof(struct card));
+    strncpy(c1->front, "This is the front of the first card.", CARD_MAX_CHAR);
+    strncpy(c1->back, "This is the back of the first card.", CARD_MAX_CHAR);
+    CIRCLEQ_INSERT_HEAD(&head, c1, cards);
 
-  c1 = malloc(sizeof(struct card));
-  strncpy(c1->front, "This is the front of the first card.", CARD_MAX_CHAR);
-  strncpy(c1->back, "This is the back of the first card.", CARD_MAX_CHAR);
-  CIRCLEQ_INSERT_HEAD(&head, c1, cards);
+    c2 = malloc(sizeof(struct card));
+    strncpy(c2->front, "This is the front of the second card.", CARD_MAX_CHAR);
+    strncpy(c2->back, "This is the back of the second card.", CARD_MAX_CHAR);
+    CIRCLEQ_INSERT_TAIL(&head, c2, cards);
 
-  c2 = malloc(sizeof(struct card));
-  strncpy(c2->front, "This is the front of the second card.", CARD_MAX_CHAR);
-  strncpy(c2->back, "This is the back of the second card.", CARD_MAX_CHAR);
-  CIRCLEQ_INSERT_TAIL(&head, c2, cards);
+    c3 = malloc(sizeof(struct card));
+    strncpy(c3->front, "This is the front of the third card.", CARD_MAX_CHAR);
+    strncpy(c3->back, "This is the back of the third card.", CARD_MAX_CHAR);
+    CIRCLEQ_INSERT_AFTER(&head, c2, c3, cards);
 
-  c3 = malloc(sizeof(struct card));
-  strncpy(c3->front, "This is the front of the third card.", CARD_MAX_CHAR);
-  strncpy(c3->back, "This is the back of the third card.", CARD_MAX_CHAR);
-  CIRCLEQ_INSERT_AFTER(&head, c2, c3, cards);
+    int row, col;
+    getmaxyx(stdscr, row, col);
 
-  // Prepare curses interface to the program.
-  int row, col;
+    // Clear what was on the screen from the previous menu.
+    erase();
 
-  initscr();
-  use_default_colors();
-  cbreak();
-  noecho();
-  keypad(stdscr, TRUE);
-  getmaxyx(stdscr, row, col);
+    // Set the state to decide how to advance.
+    enum study_state state = SHOW_FRONT;
+    mvprintw(row - 1, 0, "Press q to exit.");
+    mvprintw(row - 2, 0, "Press ENTER or SPACE to show answer.");
 
-  // Set the state to decide how to advance.
-  enum study_state state = SHOW_FRONT;
-  mvprintw(row - 1, 0, "Press q to exit.");
-  mvprintw(row - 2, 0, "Press ENTER or SPACE to show answer.");
+    // Get the text on the front of the first card.
+    char card_str[CARD_MAX_CHAR]; // Declare an array to store text from cards.
+    c1 = CIRCLEQ_FIRST(&head);
+    strncpy(card_str, c1->front, CARD_MAX_CHAR);
 
-  // Get the text on the front of the first card.
-  char card_str[CARD_MAX_CHAR]; // Declare an array to store text from cards.
-  c1 = CIRCLEQ_FIRST(&head);
-  strncpy(card_str, c1->front, CARD_MAX_CHAR);
+    // Print the text.
+    mvprintw(0, 0, "Prompt:");
+    mvprintw(1, 0, "%s", card_str);
+    refresh();
 
-  // Print the text.
-  mvprintw(0, 0, "Prompt:");
-  mvprintw(1, 0, "%s", card_str);
-  refresh();
+    // Get user input character and respond accordingly.
+    // To do:
+    //      Provide two ways to exit: (1) exit the entire program or (2) exit
+    //      the current deck and go back to the deck chooser.
 
-  // Get user input character and respond accordingly.
-  int c;
-  while ((c = getch()) != 'q') {
-    // Show the answer if the input key is enter (10) or space (32).
-    if (state != DECK_END && (c == 10 || c == 32)) {
-      if (state == SHOW_FRONT) {
-        state = SHOW_BACK;
-        strncpy(card_str, c1->back, CARD_MAX_CHAR);
-        erase();
-        mvprintw(0, 0, "Answer:");
-        mvprintw(1, 0, "%s", card_str);
-        mvprintw(row - 3, 0, "Press 1 to review again or 2 to discard.");
-        mvprintw(row - 2, 0, "Press ENTER or SPACE to show prompt.");
-        mvprintw(row - 1, 0, "Press q to exit.");
-        refresh();
-        continue;
-      } else {
-        state = SHOW_FRONT;
-        strncpy(card_str, c1->front, CARD_MAX_CHAR);
-        erase();
-        mvprintw(0, 0, "Prompt:");
-        mvprintw(1, 0, "%s", card_str);
-        mvprintw(row - 2, 0, "Press ENTER or SPACE to show answer.");
-        mvprintw(row - 1, 0, "Press q to exit.");
-        refresh();
-        continue;
-      }
+    int exit_i = 0;
+    int c;
+    while (!exit_i) {
+        c = getch();
+        if (c == 'q') exit_i = 1;
+        // Show the answer if the input key is enter (10) or space (32).
+        if (state != DECK_END && (c == 10 || c == 32)) {
+            if (state == SHOW_FRONT) {
+                state = SHOW_BACK;
+                strncpy(card_str, c1->back, CARD_MAX_CHAR);
+                erase();
+                mvprintw(0, 0, "Answer:");
+                mvprintw(1, 0, "%s", card_str);
+                mvprintw(row - 3, 0,
+                         "Press a to review again or d to discard.");
+                mvprintw(row - 2, 0, "Press ENTER or SPACE to show prompt.");
+                mvprintw(row - 1, 0, "Press q to exit.");
+                refresh();
+            } else {
+                state = SHOW_FRONT;
+                strncpy(card_str, c1->front, CARD_MAX_CHAR);
+                erase();
+                mvprintw(0, 0, "Prompt:");
+                mvprintw(1, 0, "%s", card_str);
+                mvprintw(row - 2, 0, "Press ENTER or SPACE to show answer.");
+                mvprintw(row - 1, 0, "Press q to exit.");
+                refresh();
+            }
+        }
+        // Advance the deck if the input character was 'a'.
+        if (state == SHOW_BACK && c == 'a') {
+            c1 = CIRCLEQ_NEXT(c1, cards);
+            if (c1 == (void *)&head) {
+                c1 = CIRCLEQ_FIRST(&head);
+            }
+            state = SHOW_FRONT;
+            strncpy(card_str, c1->front, CARD_MAX_CHAR);
+            erase();
+            mvprintw(0, 0, "Prompt:");
+            mvprintw(1, 0, "%s", card_str);
+            mvprintw(row - 2, 0, "Press ENTER or SPACE to show answer.");
+            mvprintw(row - 1, 0, "Press q to exit.");
+        }
+        if (state == SHOW_BACK && c == 'd') {
+            // If the input character was 'd', remove the current card from the
+            // deck and advance, or if this is the last card, offer to study
+            // deck again or exit.
+            c2 = CIRCLEQ_NEXT(c1, cards);
+            CIRCLEQ_REMOVE(&head, c1, cards);
+            c1 = c2;
+            if (CIRCLEQ_EMPTY(&head)) {
+                state = DECK_END;
+                erase();
+                mvprintw(0, 0, "You have reached the end of the deck.");
+                mvprintw(row - 2, 0, "Press a to study the deck again.");
+                mvprintw(row - 1, 0, "Press q to exit.");
+                refresh();
+            } else {
+                if (c1 == (void *)&head) {
+                    c1 = CIRCLEQ_FIRST(&head);
+                }
+                state = SHOW_FRONT;
+                strncpy(card_str, c1->front, CARD_MAX_CHAR);
+                erase();
+                mvprintw(0, 0, "Prompt:");
+                mvprintw(1, 0, "%s", card_str);
+                mvprintw(row - 2, 0, "Press ENTER or SPACE to show answer.");
+                mvprintw(row - 1, 0, "Press q to exit.");
+                refresh();
+            }
+        }
+        if (state == DECK_END && c == '1') {
+            // Load the current deck again.
+            erase();
+            mvprintw(0, 0, "Ok, imagine that we loaded the deck again.");
+            mvprintw(row - 1, 0, "Press q to exit.");
+            refresh();
+        }
     }
-    // Advance the deck if the input character was '1' (49).
-    if (state == SHOW_BACK && c == 49) {
-      c1 = CIRCLEQ_NEXT(c1, cards);
-      if (c1 == (void *)&head) {
-          c1 = CIRCLEQ_FIRST(&head);
-      }
-      state = SHOW_FRONT;
-      strncpy(card_str, c1->front, CARD_MAX_CHAR);
-      erase();
-      mvprintw(0, 0, "Prompt:");
-      mvprintw(1, 0, "%s", card_str);
-      mvprintw(row - 2, 0, "Press ENTER or SPACE to show answer.");
-      mvprintw(row - 1, 0, "Press q to exit.");
-      refresh();
-      continue;
-    }
-    if (state == SHOW_BACK && c == 50) {
-      // If the input character was '2' (50), remove the current card from the
-      // deck and advance, or if this is the last card, offer to study deck
-      // again or exit.
-      c2 = CIRCLEQ_NEXT(c1, cards);
-      CIRCLEQ_REMOVE(&head, c1, cards);
-      c1 = c2;
-      if (CIRCLEQ_EMPTY(&head)) {
-          state = DECK_END;
-          erase();
-          mvprintw(0, 0, "You have reached the end of the deck.");
-          mvprintw(row - 2, 0, "Press 1 to study the deck again.");
-          mvprintw(row - 1, 0, "Press q to exit.");
-          refresh();
-      } else {
-          if (c1 == (void *)&head) {
-              c1 = CIRCLEQ_FIRST(&head);
-          }
-          state = SHOW_FRONT;
-          strncpy(card_str, c1->front, CARD_MAX_CHAR);
-          erase();
-          mvprintw(0, 0, "Prompt:");
-          mvprintw(1, 0, "%s", card_str);
-          mvprintw(row - 2, 0, "Press ENTER or SPACE to show answer.");
-          mvprintw(row - 1, 0, "Press q to exit.");
-          refresh();
-          continue;
-      }
-      continue;
-    }
-    if (state == DECK_END && c == '1') {
-        // Load the current deck again.
-        erase();
-        mvprintw(0, 0, "Ok, imagine that we loaded the deck again.");
-        mvprintw(row - 1, 0, "Press q to exit.");
-        refresh();
-        continue;
-    }
-  }
 
-  endwin();
-
-  return wind_down(&head);
+    wind_down_study(&head);
+    return exit_i;
 }

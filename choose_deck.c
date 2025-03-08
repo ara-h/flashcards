@@ -10,15 +10,15 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "study.h"
 
 #define DECK_NAME_MAX 256
 
 int deck_selector(const struct dirent *e) {
-    return fnmatch("*.deck.txt", e->d_name, 0) == 0 ? 1 : 0;
+    return !fnmatch("*.deck.txt", e->d_name, 0);
 }
 
 
-int study(char *deck_fn);
 int enter_deck_study(int item_index, struct dirent **deck_namelist);
 
 
@@ -75,13 +75,17 @@ int main(void) {
     MENU *dc_menu = new_menu((ITEM **)dc_menu_items);
     menu_opts_off(dc_menu, O_SHOWDESC);
 
+    mvprintw(row - 1, 0, "Press q to exit.");
+
     post_menu(dc_menu);
     refresh();
 
+    int exit_i = 0;
     ITEM* cur;
     int (*p)(int item_index, struct dirent **deck_namelist);
     int c;
-    while ((c = getch()) != 'q') {
+    while (!exit_i) {
+        c = getch();
         switch(c) {
             case 'j':
             case KEY_DOWN:
@@ -94,12 +98,21 @@ int main(void) {
             case 10:
                 cur = current_item(dc_menu);
                 p = item_userptr(cur);
+                unpost_menu(dc_menu);
                 p(item_index(cur), namelist);
+                erase();
+                post_menu(dc_menu);
+                mvprintw(row - 1, 0, "Press q to exit.");
                 break;
             case KEY_RESIZE:
                 getmaxyx(stdscr, row, col);
-                mvprintw(row - 1, 0,
-                         "This window is now size %d x %d", row, col);
+                mvprintw(
+                    row - 1, 0,
+                    "This window is now size %d x %d", row, col
+                );
+                break;
+            case 'q':
+                exit_i = 1;
                 break;
         }
         refresh();
@@ -115,13 +128,14 @@ int main(void) {
     return 0;
 }
 
+/*
 int study(char *deck_fn) {
     erase();
     mvprintw(0, 0, "Wow, it's %s", deck_fn);
     refresh();
     return 1;
 }
-
+*/
 
 int enter_deck_study(int item_index, struct dirent **deck_namelist) {
     return study(deck_namelist[item_index]->d_name);
