@@ -19,7 +19,9 @@ int deck_selector(const struct dirent *e) {
 }
 
 
-int enter_deck_study(int item_index, struct dirent **deck_namelist);
+int enter_deck_study(int item_index, struct dirent **deck_namelist) {
+    return study(deck_namelist[item_index]->d_name);
+}
 
 
 int main(void) {
@@ -126,17 +128,4 @@ int main(void) {
     free(choices);
     endwin();
     return 0;
-}
-
-/*
-int study(char *deck_fn) {
-    erase();
-    mvprintw(0, 0, "Wow, it's %s", deck_fn);
-    refresh();
-    return 1;
-}
-*/
-
-int enter_deck_study(int item_index, struct dirent **deck_namelist) {
-    return study(deck_namelist[item_index]->d_name);
 }
