@@ -1,3 +1,4 @@
+#include <string.h>
 #include <sys/queue.h>
 #include "study.h"
 
@@ -13,14 +14,48 @@ void wind_down_study(struct deck_head *head_ptr) {
     return;
 }
 
-// struct deck_head* load_deck(FILE* deck_fp);
+int load_deck(struct deck_head *hp, FILE *fp, char *buf) {
+    unsigned int front = 1;
+    struct card *c = NULL;
+    while (fgets(buf, CARD_MAX_CHAR, fp) != NULL) {
+        if (front) {
+            c = malloc(sizeof(struct card));
+            strncpy(c->front, buf, CARD_MAX_CHAR);
+            front = 0;
+        } else {
+            strncpy(c->back, buf, CARD_MAX_CHAR);
+            CIRCLEQ_INSERT_TAIL(hp, c, cards);
+            front = 1;
+        }
+    }
+
+    int retv = 0;
+    if (!front) {
+        if (c == NULL) {
+            retv = 1; // Nothing was read from the file.
+        } else {
+            free(c);
+            retv = -1;
+        }
+    }
+    return retv;
+}
 
 int study(char *deck_fn) {
-    struct card *c1, *c2, *c3;
-    struct deck_head head;
+    // struct card *c1, *c2, *c3;
+    FILE *fp;
+    if ((fp = fopen(deck_fn, "r")) == NULL) {
+        return 1;
+    }
 
+    struct deck_head head;
     CIRCLEQ_INIT(&head);
 
+    char card_str[CARD_MAX_CHAR];
+    if (fgets(card_str, CARD_MAX_CHAR, fp) == NULL) return 1;
+    load_deck(&head, fp, card_str);
+
+    /*
     c1 = malloc(sizeof(struct card));
     strncpy(c1->front, "This is the front of the first card.", CARD_MAX_CHAR);
     strncpy(c1->back, "This is the back of the first card.", CARD_MAX_CHAR);
@@ -35,6 +70,7 @@ int study(char *deck_fn) {
     strncpy(c3->front, "This is the front of the third card.", CARD_MAX_CHAR);
     strncpy(c3->back, "This is the back of the third card.", CARD_MAX_CHAR);
     CIRCLEQ_INSERT_AFTER(&head, c2, c3, cards);
+    */
 
     int row, col;
     getmaxyx(stdscr, row, col);
@@ -48,7 +84,8 @@ int study(char *deck_fn) {
     mvprintw(row - 2, 0, "Press ENTER or SPACE to show answer.");
 
     // Get the text on the front of the first card.
-    char card_str[CARD_MAX_CHAR]; // Declare an array to store text from cards.
+    //char card_str[CARD_MAX_CHAR]; // Declare an array to store text from cards.
+    struct card *c1, *c2;
     c1 = CIRCLEQ_FIRST(&head);
     strncpy(card_str, c1->front, CARD_MAX_CHAR);
 
@@ -133,7 +170,7 @@ int study(char *deck_fn) {
                 refresh();
             }
         }
-        if (state == DECK_END && c == '1') {
+        if (state == DECK_END && c == 'a') {
             // Load the current deck again.
             erase();
             mvprintw(0, 0, "Ok, imagine that we loaded the deck again.");

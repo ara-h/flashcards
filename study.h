@@ -17,4 +17,5 @@ struct card {
 CIRCLEQ_HEAD(deck_head, card);
 
 void wind_down_study(struct deck_head *head_ptr);
+int load_deck(struct deck_head *hp, FILE *fp, char* buf);
 int study(char* deck_fn);
