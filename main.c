@@ -1,21 +1,29 @@
 #include <ctype.h>
+#include <dirent.h>
+#include <fnmatch.h>
+#include <menu.h>
+#include <ncurses.h>
 #include <regex.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
+#include "study.h"
+
 # define VERSION_MAJOR 0
 # define VERSION_MINOR 0
 # define VERSION_MICRO 1
 
+# define DECK_NAME_MAX 256
+
 void show_help(char *ex_name);
-
-
 int parse_config(FILE *config,
                  char *reg_buf, unsigned long reg_buf_sz,
                  char *path_buf, unsigned long path_buf_sz);
-
+int deck_chooser(void);
+int deck_selector(const struct dirent *e);
+int enter_deck_study(int item_index, struct dirent **deck_namelist);
 
 /*
 * Parse command line arguments. Depending on inputs, either add path to search
@@ -25,6 +33,7 @@ int main(int argc, char** argv) {
     int version_flag, help_flag, search_paths_flag;
     version_flag = help_flag = search_paths_flag = 0;
     char new_path[1024];
+    memset(new_path, 0, 1024);
     int c;
     while ((c = getopt(argc, argv, "a:hpV")) != -1) {
         switch(c) {
@@ -99,14 +108,23 @@ int main(int argc, char** argv) {
 
     // Get search paths.
     //      Paths included are expected to be separated by ':'.
+
     // Do the showing of the search paths and the exiting, if desired.
+    if (search_paths_flag) {
+        // Do something here.
+        return 0;
+    }
+
     // Do the adding of search paths and the exiting, if desired.
-    // Enter deck chooser.
-    // Display a scrolling ncurses menu, where the items are the truncated
-    //      deck names. Each item has a pointer to a function that starts study
-    //      mode with the deck identifier passed in.
-    // Enter study mode.
-    return 0;
+    if (new_path[0] != '\0') {
+        // Do something here.
+        return 0;
+    }
+
+    // Scan search paths for decks. Pass the number of decks and namelist to
+    //      deck chooser.
+
+    return deck_chooser();
 }
 
 
@@ -181,4 +199,120 @@ int parse_config(FILE *config,
     }
     regfree(&regex);
     return 1;
+}
+
+
+int deck_chooser(void) {
+    struct dirent **namelist;
+    int n, i;
+    n = scandir(".", &namelist, deck_selector, alphasort);
+    char **choices = NULL;
+    if (n >= 0) {
+        choices = malloc(
+            (n * sizeof(char *)) + (n * DECK_NAME_MAX * sizeof(char))
+        );
+        for (i = 0; i < n; i++) {
+            choices[i] = (char *)(choices + n) + (i * DECK_NAME_MAX);
+        }
+        FILE *fp;
+        char *sp;
+        char deck_name[DECK_NAME_MAX];
+        for (i = 0; i < n; i++) {
+            fp = fopen(namelist[i]->d_name, "r");
+            sp = fgets(deck_name, DECK_NAME_MAX, fp);
+            fclose(fp);
+            if (sp == NULL) {
+                perror("Could not read from a file");
+                free(choices);
+                return 1;
+            }
+            deck_name[strcspn(deck_name, "\r\n")] = 0; // Remove ending CR, LF.
+            strncpy(choices[i], deck_name, DECK_NAME_MAX);
+        }
+    } else {
+        printf("No decks found in search path.\n");
+        return 0;
+    }
+
+    // Initialize curses
+    initscr();
+    use_default_colors();
+
+    int row, col;
+    getmaxyx(stdscr, row, col);
+
+    cbreak();
+    noecho();
+    keypad(stdscr, TRUE);
+
+    ITEM **dc_menu_items = (ITEM **)calloc(n + 1, sizeof(ITEM *));
+    for (i = 0; i < n; i++) {
+        dc_menu_items[i] = new_item(choices[i], NULL);
+        set_item_userptr(dc_menu_items[i], enter_deck_study);
+    }
+    dc_menu_items[n] = (ITEM *)NULL;
+
+    MENU *dc_menu = new_menu((ITEM **)dc_menu_items);
+    menu_opts_off(dc_menu, O_SHOWDESC);
+
+    mvprintw(row - 1, 0, "Press q to exit.");
+
+    post_menu(dc_menu);
+    refresh();
+
+    int exit_i = 0;
+    ITEM* cur;
+    int (*p)(int item_index, struct dirent **deck_namelist);
+    int c;
+    while (!exit_i) {
+        c = getch();
+        switch(c) {
+            case 'j':
+            case KEY_DOWN:
+                menu_driver(dc_menu, REQ_DOWN_ITEM);
+                break;
+            case 'k':
+            case KEY_UP:
+                menu_driver(dc_menu, REQ_UP_ITEM);
+                break;
+            case 10:
+                cur = current_item(dc_menu);
+                p = item_userptr(cur);
+                unpost_menu(dc_menu);
+                p(item_index(cur), namelist);
+                erase();
+                post_menu(dc_menu);
+                mvprintw(row - 1, 0, "Press q to exit.");
+                break;
+            case KEY_RESIZE:
+                getmaxyx(stdscr, row, col);
+                mvprintw(
+                    row - 1, 0,
+                    "This window is now size %d x %d", row, col
+                );
+                break;
+            case 'q':
+                exit_i = 1;
+                break;
+        }
+        refresh();
+    }
+
+    unpost_menu(dc_menu);
+    free(dc_menu);
+    for (i = 0; i < n + 1; i++) {
+        free_item(dc_menu_items[i]);
+    }
+    free(choices);
+    endwin();
+    return 0;
+}
+
+
+int deck_selector(const struct dirent *e) {
+    return !fnmatch("*.deck.txt", e->d_name, 0);
+}
+
+int enter_deck_study(int item_index, struct dirent **deck_namelist) {
+    return study(deck_namelist[item_index]->d_name);
 }
