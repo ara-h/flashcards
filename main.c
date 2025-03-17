@@ -276,6 +276,7 @@ int deck_chooser(void) {
                 menu_driver(dc_menu, REQ_UP_ITEM);
                 break;
             case 10:
+            case KEY_ENTER:
                 cur = current_item(dc_menu);
                 p = item_userptr(cur);
                 unpost_menu(dc_menu);

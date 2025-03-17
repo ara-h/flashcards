@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include <string.h>
 #include <sys/queue.h>
 #include "study.h"
@@ -15,7 +16,9 @@ void wind_down_study(struct deck_head *head_ptr) {
 }
 
 int load_deck(struct deck_head *hp, FILE *fp, char *buf) {
-    unsigned int front = 1;
+    unsigned int front, n;
+    front = 1;
+    n = 0;
     struct card *c = NULL;
     while (fgets(buf, CARD_MAX_CHAR, fp) != NULL) {
         if (front) {
@@ -26,16 +29,21 @@ int load_deck(struct deck_head *hp, FILE *fp, char *buf) {
             strncpy(c->back, buf, CARD_MAX_CHAR);
             CIRCLEQ_INSERT_TAIL(hp, c, cards);
             front = 1;
+            n++;
         }
     }
 
     int retv = 0;
+    if (c == NULL) {
+        retv = 1; // Nothing was read from the file.
+    }
     if (!front) {
-        if (c == NULL) {
-            retv = 1; // Nothing was read from the file.
+        if (n > 1) {
+            sprintf(c->back, "\n");
+            CIRCLEQ_INSERT_TAIL(hp, c, cards);
         } else {
             free(c);
-            retv = -1;
+            retv = 1;
         }
     }
     return retv;
@@ -51,26 +59,11 @@ int study(char *deck_fn) {
     struct deck_head head;
     CIRCLEQ_INIT(&head);
 
+    int exit_i = 0;
     char card_str[CARD_MAX_CHAR];
     if (fgets(card_str, CARD_MAX_CHAR, fp) == NULL) return 1;
-    load_deck(&head, fp, card_str);
-
-    /*
-    c1 = malloc(sizeof(struct card));
-    strncpy(c1->front, "This is the front of the first card.", CARD_MAX_CHAR);
-    strncpy(c1->back, "This is the back of the first card.", CARD_MAX_CHAR);
-    CIRCLEQ_INSERT_HEAD(&head, c1, cards);
-
-    c2 = malloc(sizeof(struct card));
-    strncpy(c2->front, "This is the front of the second card.", CARD_MAX_CHAR);
-    strncpy(c2->back, "This is the back of the second card.", CARD_MAX_CHAR);
-    CIRCLEQ_INSERT_TAIL(&head, c2, cards);
-
-    c3 = malloc(sizeof(struct card));
-    strncpy(c3->front, "This is the front of the third card.", CARD_MAX_CHAR);
-    strncpy(c3->back, "This is the back of the third card.", CARD_MAX_CHAR);
-    CIRCLEQ_INSERT_AFTER(&head, c2, c3, cards);
-    */
+    exit_i = load_deck(&head, fp, card_str);
+    fclose(fp);
 
     int row, col;
     getmaxyx(stdscr, row, col);
@@ -78,18 +71,27 @@ int study(char *deck_fn) {
     // Clear what was on the screen from the previous menu.
     erase();
 
-    // Set the state to decide how to advance.
-    enum study_state state = SHOW_FRONT;
+    // Declare int to hold user input.
+    int c;
+    // Inform user if there was only one dangling card front read.
+    if (exit_i) {
+        c = 0;
+        mvprintw(0, 0,
+                 "There were no complete prompt/answer pairs in the chosen "
+                 "deck.");
+        mvprintw(row - 1, 0, "Press q to exit.");
+        refresh();
+        do { c = getch(); } while (c != 'q');
+        return exit_i;
+    }
+
     mvprintw(row - 1, 0, "Press q to exit.");
     mvprintw(row - 2, 0, "Press ENTER or SPACE to show answer.");
 
-    // Get the text on the front of the first card.
-    //char card_str[CARD_MAX_CHAR]; // Declare an array to store text from cards.
     struct card *c1, *c2;
     c1 = CIRCLEQ_FIRST(&head);
     strncpy(card_str, c1->front, CARD_MAX_CHAR);
 
-    // Print the text.
     mvprintw(0, 0, "Prompt:");
     mvprintw(1, 0, "%s", card_str);
     refresh();
@@ -99,13 +101,14 @@ int study(char *deck_fn) {
     //      Provide two ways to exit: (1) exit the entire program or (2) exit
     //      the current deck and go back to the deck chooser.
 
-    int exit_i = 0;
-    int c;
+    // Set the state to decide how to advance.
+    enum study_state state = SHOW_FRONT;
+
     while (!exit_i) {
         c = getch();
         if (c == 'q') exit_i = 1;
         // Show the answer if the input key is enter (10) or space (32).
-        if (state != DECK_END && (c == 10 || c == 32)) {
+        if (state != DECK_END && (c == 10 || c == 32 || c == KEY_ENTER)) {
             if (state == SHOW_FRONT) {
                 state = SHOW_BACK;
                 strncpy(card_str, c1->back, CARD_MAX_CHAR);
@@ -116,7 +119,6 @@ int study(char *deck_fn) {
                          "Press a to review again or d to discard.");
                 mvprintw(row - 2, 0, "Press ENTER or SPACE to show prompt.");
                 mvprintw(row - 1, 0, "Press q to exit.");
-                refresh();
             } else {
                 state = SHOW_FRONT;
                 strncpy(card_str, c1->front, CARD_MAX_CHAR);
@@ -125,7 +127,6 @@ int study(char *deck_fn) {
                 mvprintw(1, 0, "%s", card_str);
                 mvprintw(row - 2, 0, "Press ENTER or SPACE to show answer.");
                 mvprintw(row - 1, 0, "Press q to exit.");
-                refresh();
             }
         }
         // Advance the deck if the input character was 'a'.
@@ -155,7 +156,6 @@ int study(char *deck_fn) {
                 mvprintw(0, 0, "You have reached the end of the deck.");
                 mvprintw(row - 2, 0, "Press a to study the deck again.");
                 mvprintw(row - 1, 0, "Press q to exit.");
-                refresh();
             } else {
                 if (c1 == (void *)&head) {
                     c1 = CIRCLEQ_FIRST(&head);
@@ -167,7 +167,6 @@ int study(char *deck_fn) {
                 mvprintw(1, 0, "%s", card_str);
                 mvprintw(row - 2, 0, "Press ENTER or SPACE to show answer.");
                 mvprintw(row - 1, 0, "Press q to exit.");
-                refresh();
             }
         }
         if (state == DECK_END && c == 'a') {
@@ -175,8 +174,8 @@ int study(char *deck_fn) {
             erase();
             mvprintw(0, 0, "Ok, imagine that we loaded the deck again.");
             mvprintw(row - 1, 0, "Press q to exit.");
-            refresh();
         }
+        refresh();
     }
 
     wind_down_study(&head);
