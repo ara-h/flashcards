@@ -21,6 +21,8 @@ void show_help(char *ex_name);
 int parse_config(FILE *config,
                  char *reg_buf, unsigned long reg_buf_sz,
                  char *path_buf, unsigned long path_buf_sz);
+unsigned long *get_sp(char *path_buf, unsigned long path_buf_sz,
+                      unsigned long *res_sz);
 int deck_chooser(void);
 int deck_selector(const struct dirent *e);
 int enter_deck_study(int item_index, struct dirent **deck_namelist);
@@ -89,31 +91,60 @@ int main(int argc, char** argv) {
     FILE *config;
     if ((config = fopen("./flashcards.conf", "r")) == NULL) {
         fprintf(stderr, "Could not open ./flashcards.conf\n");
-        printf("Using default search path \"./\"\n");
+        fprintf(stderr, "Using default search path \"./\"\n");
     }
 
     if (config != NULL) {
         // Parse configuration file.
         char reg_buf[4096];
-        memset(reg_buf, 0, 4096);
+        memset(reg_buf, '\0', sizeof(reg_buf));
         char path_buf[4096];
-        memset(path_buf, 0, 4096);
+        memset(path_buf, '\0', sizeof(path_buf));
         int res;
-        res = parse_config(config, reg_buf, 4096, path_buf, 4096);
+        res = parse_config(config,
+                           reg_buf, sizeof(reg_buf),
+                           path_buf, sizeof(path_buf));
         fclose(config);
         if (res < 0) {
             return 1;
         }
+
+
+        // Do the showing of the search paths and the exiting, if desired.
+        if (search_paths_flag) {
+            printf("%s\n", path_buf);
+            return 0;
+        }
+
+        // Get search paths.
+        //      Paths included are expected to be separated by ':'.
+        unsigned long *sp_bounds;
+        unsigned long res_sz;
+
+        // Initialize res_sz.
+        sp_bounds = get_sp(path_buf, sizeof(path_buf), &res_sz);
+        if (sp_bounds == NULL) {
+            fprintf(stderr,
+                    "The search path in the config file was inchoate.\n");
+            return 1;
+        }
+        int i, d, j = 0;
+        char buf[256];
+        memset(buf, '\0', sizeof(buf));
+        // Load paths into array of pointers here.
+        //FILE* log = fopen("./main.log", "w");
+        for (i = 0; i < res_sz; i++) {
+            d = sp_bounds[i] - j;
+            strncpy(buf, &path_buf[j], d);
+            //fprintf(log, "%s\n", buf);
+            j = sp_bounds[i];
+            }
+        strncpy(buf, &path_buf[j], sizeof(buf));
+        //fprintf(log, "%s\n", buf);
+        //fclose(log);
+        free(sp_bounds);
     }
 
-    // Get search paths.
-    //      Paths included are expected to be separated by ':'.
-
-    // Do the showing of the search paths and the exiting, if desired.
-    if (search_paths_flag) {
-        // Do something here.
-        return 0;
-    }
 
     // Do the adding of search paths and the exiting, if desired.
     if (new_path[0] != '\0') {
@@ -199,6 +230,36 @@ int parse_config(FILE *config,
     }
     regfree(&regex);
     return 1;
+}
+
+
+unsigned long *get_sp(char *path_buf, unsigned long path_buf_sz,
+                      unsigned long *res_sz) {
+    unsigned long i, n, d;
+    i = n = d = 0;
+    while (path_buf[i] != '\0' && i < path_buf_sz) {
+        if (path_buf[i] != ':') {
+            d++;
+        } else {
+            if (d == 0) return NULL;
+            d = 0;
+            n++;
+        }
+        i++;
+    }
+
+    if (d == 0) return NULL;
+
+    *res_sz = n;
+    unsigned long *res;
+
+    res = malloc(n*sizeof(unsigned long));
+    for (i = 0; i < path_buf_sz; i++) {
+        if (path_buf[i] == ':') {
+            // Do something here.
+        }
+    }
+    return res;
 }
 
 
